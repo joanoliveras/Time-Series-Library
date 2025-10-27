@@ -140,6 +140,18 @@ def _summarize_single_experiment(df_exp: pd.DataFrame, sla: float) -> Dict[str, 
     # Only count duration above SLA for the edge cluster rows
     EDGE_CLUSTER_ID = 'eb0e3eaa-b668-4ad6-bc10-2bb0eb7da259'
     CLOUD_CLUSTER_ID = 'fd7816db-7948-4602-af7a-1d51900792a7'
+    # Count migrations between clusters
+    number_migrations_edge_to_cloud = 0
+    number_migrations_cloud_to_edge = 0
+    if 'cluster' in df_exp.columns:
+        cluster_series = df_exp['cluster'].astype(str)
+        cluster_shift = cluster_series.shift(1)
+        transitions = cluster_series != cluster_shift
+
+        # Identify direction of transitions
+        number_migrations_edge_to_cloud = int(((cluster_shift == EDGE_CLUSTER_ID) & (cluster_series == CLOUD_CLUSTER_ID) & transitions).sum())
+        number_migrations_cloud_to_edge = int(((cluster_shift == CLOUD_CLUSTER_ID) & (cluster_series == EDGE_CLUSTER_ID) & transitions).sum())
+
     if 'cluster' in df_exp.columns:
         in_edge_cluster = (df_exp['cluster'] == EDGE_CLUSTER_ID)
         in_cloud_cluster = (df_exp['cluster'] == CLOUD_CLUSTER_ID)
@@ -166,7 +178,10 @@ def _summarize_single_experiment(df_exp: pd.DataFrame, sla: float) -> Dict[str, 
         'num_times_crossed_above_sla': crossings,
         'total_seconds_above_sla_edge_cluster': total_seconds_above_sla_edge_cluster,
         'total_seconds_above_sla_cloud_cluster': total_seconds_above_sla_cloud_cluster,
+        'number_migrations_edge_to_cloud': number_migrations_edge_to_cloud,
+        'number_migrations_cloud_to_edge': number_migrations_cloud_to_edge,
         'total_seconds_in_cloud_cluster': total_seconds_in_cloud_cluster,
+        'total_seconds_in_edge_cluster': seconds_in_edge_cluster,
         'percent_time_below_sla': percent_time_below_sla,
     }
 
@@ -197,7 +212,7 @@ def process_approach_per_experiment(
         raise RuntimeError(f"No experiments with data found for {approach_path}")
 
     df = pd.DataFrame(rows)
-    return df[['experiment_id', 'num_steps', 'overall_mean_latency', 'peak_latency', 'num_times_crossed_above_sla', 'total_seconds_above_sla_edge_cluster', 'total_seconds_above_sla_cloud_cluster', 'total_seconds_in_cloud_cluster', 'percent_time_below_sla']]
+    return df[['experiment_id', 'num_steps', 'overall_mean_latency', 'peak_latency', 'num_times_crossed_above_sla', 'total_seconds_above_sla_edge_cluster', 'total_seconds_above_sla_cloud_cluster', 'number_migrations_edge_to_cloud', 'number_migrations_cloud_to_edge', 'total_seconds_in_cloud_cluster', 'total_seconds_in_edge_cluster', 'percent_time_below_sla']]
 
 
 def main():
@@ -240,7 +255,10 @@ def main():
                 'avg_num_times_crossed_above_sla': [float(df_exp['num_times_crossed_above_sla'].mean())],
                 'avg_total_seconds_above_sla_edge_cluster': [float(df_exp['total_seconds_above_sla_edge_cluster'].mean())],
                 'avg_total_seconds_above_sla_cloud_cluster': [float(df_exp['total_seconds_above_sla_cloud_cluster'].mean())],
+                'avg_number_migrations_edge_to_cloud': [float(df_exp['number_migrations_edge_to_cloud'].mean())],
+                'avg_number_migrations_cloud_to_edge': [float(df_exp['number_migrations_cloud_to_edge'].mean())],
                 'avg_total_seconds_in_cloud_cluster': [float(df_exp['total_seconds_in_cloud_cluster'].mean())],
+                'avg_total_seconds_in_edge_cluster': [float(df_exp['total_seconds_in_edge_cluster'].mean())],
                 'avg_percent_time_below_sla': [float(df_exp['percent_time_below_sla'].mean())],
             })
             approach_summaries.append(df_summary)
