@@ -9,13 +9,11 @@ Directory layout (same as other analysis scripts):
 
 Usage example:
   python f2f_meeting/extract_experiment_windows.py \
-    --root /home/jolivera/Documents/CloudSkin/Time-Series-Library/f2f_meeting/comparison_of_approaches \
-    --approach reactive \
-    --job job-0 \
-    --experiment validation-reactive-updated-job-0_2025-09-14T160419_2025-09-15T000421_created_at_2025-09-15T000423.json \
-    --out_dir /home/jolivera/Documents/CloudSkin/Time-Series-Library/f2f_meeting/comparison_of_approaches/random_forest/job-0/predictions \
-    --cluster eb0e3eaa-b668-4ad6-bc10-2bb0eb7da259
-
+        --root /home/jolivera/Documents/CloudSkin/Time-Series-Library/f2f_meeting/comparison_of_approaches \
+        --approach random_forest \
+        --job job-0 \
+        --experiment validation-random-forest-job-0_2025-09-18T230054_2025-09-19T070056_created_at_2025-09-19T070058.json \
+        --out_dir /home/jolivera/Documents/CloudSkin/Time-Series-Library/f2f_meeting/comparison_of_approaches/random_forest/job-0/predictions
 Notes:
   - Windows are created as non-overlapping blocks of 10 rows each (assuming
     ~30s step, that is 5 minutes). The first window covers steps [0..9], which

@@ -9,7 +9,7 @@ Assumes the Random Forest checkpoint exists at:
   <checkpoints>/<model_id>/model.joblib
 
 Example:
-  python f2f_meeting/predict_windows_summary.py \
+  python -m f2f_meeting.predict_windows_summary \
     --windows_dir /home/jolivera/Documents/CloudSkin/Time-Series-Library/f2f_meeting/comparison_of_approaches/random_forest/job-0/predictions \
     --output_csv /home/jolivera/Documents/CloudSkin/Time-Series-Library/f2f_meeting/comparison_of_approaches/random_forest/job-0/predictions/results/all_predictions.csv \
     --checkpoints /home/jolivera/Documents/CloudSkin/Time-Series-Library/checkpoints \
@@ -17,6 +17,7 @@ Example:
     --seq_len 10 \
     --pred_len 10 \
     --target pipelines_status_realtime_pipeline_latency
+
 """
 
 import argparse
@@ -79,7 +80,7 @@ def main():
     # Load model once
     exp = Exp_Random_Forest(rf_args)
 
-    rows: List[Tuple[str, str, float]] = []
+    rows = []
 
     csv_files = _list_csvs(args.windows_dir)
     if not csv_files:
@@ -105,6 +106,13 @@ def main():
             # Fallback: store as raw string from the last row
             last_ts_str = str(df.iloc[-1]['date'])
 
+        # start_time as epoch seconds if possible (to match example structure)
+        try:
+            start_time_epoch = int(pd.to_datetime(last_ts_str).timestamp())
+        except Exception:
+            # If parsing fails, set NaN
+            start_time_epoch = np.nan
+
         # Current cluster name from the last row (if present)
         try:
             cluster_name = str(df['cluster'].iloc[-1]) if 'cluster' in df.columns else ''
@@ -122,19 +130,62 @@ def main():
         except Exception:
             pred_mean = float('nan')
 
-        rows.append((cluster_name, last_ts_str, pred_mean))
+        # Determine max_cluster based on rules provided
+        CLUSTER_A = 'fd7816db-7948-4602-af7a-1d51900792a7'
+        CLUSTER_B = 'eb0e3eaa-b668-4ad6-bc10-2bb0eb7da259'
 
-    # Build output dataframe
-    out_df = pd.DataFrame(rows, columns=['cluster', 'last_input_timestamp', 'prediction_mean'])
-    # Sort by timestamp if possible
+        cluster_0 = cluster_name
+        qos_0 = pred_mean
+
+        if cluster_0 == CLUSTER_A:
+            max_cluster = CLUSTER_B if (qos_0 < 0.045) else CLUSTER_A
+        elif cluster_0 == CLUSTER_B:
+            max_cluster = CLUSTER_A if (qos_0 > 0.2) else CLUSTER_B
+        else:
+            # Unknown cluster, keep as-is
+            max_cluster = cluster_0
+
+        # Build output row matching the example structure
+        row = {
+            'start_time': start_time_epoch,
+            'end_time': np.nan,  # not available
+            'duration': np.nan,  # not available
+            'run_id': np.nan,    # not available
+            'status': np.nan,    # not available
+            'analysed': True,
+            'cluster_0': cluster_0,
+            'max_cluster': max_cluster,
+            'qos_0': qos_0,
+            'max_qos': qos_0,  # repeat predicted value
+            'max_idx': 0.0,    # keep same type as example
+            'mlflow.user': 'root',
+            'mlflow.source.name': '/app/data-retrieval/data-retrieval.py',
+            'mlflow.source.type': 'LOCAL',
+            'mlflow.runName': 'dataengineer',
+            'cluster_1': cluster_0,  # repeat cluster_0
+            'qos_1': qos_0,          # repeat qos_0
+        }
+
+        rows.append(row)
+
+    # Build output dataframe with the required column order
+    columns = [
+        'start_time', 'end_time', 'duration', 'run_id', 'status', 'analysed',
+        'cluster_0', 'max_cluster', 'qos_0', 'max_qos', 'max_idx',
+        'mlflow.user', 'mlflow.source.name', 'mlflow.source.type', 'mlflow.runName',
+        'cluster_1', 'qos_1'
+    ]
+
+    out_df = pd.DataFrame(rows, columns=columns)
+
+    # Sort by start_time if possible
     try:
-        out_df['last_input_timestamp'] = pd.to_datetime(out_df['last_input_timestamp'])
-        out_df = out_df.sort_values('last_input_timestamp')
-        out_df['last_input_timestamp'] = out_df['last_input_timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')
+        out_df = out_df.sort_values('start_time')
     except Exception:
         pass
 
-    out_df.to_csv(args.output_csv, index=False)
+    # Write semicolon-delimited CSV to match the example structure
+    out_df.to_csv(args.output_csv, index=False, sep=';')
     print(f"Saved summary CSV: {args.output_csv} ({len(out_df)} rows)")
 
 
