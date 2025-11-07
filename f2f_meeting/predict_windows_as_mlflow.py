@@ -4,6 +4,7 @@ Run Random Forest inference per window CSV and write a single summary CSV with:
   - source_file: input filename
   - last_input_timestamp: max 'date' timestamp in input file (ISO)
   - prediction_mean: mean(preds) over returned prediction horizon
+  - output type: simulating the data is from MLFlow real run.
 
 Assumes the Random Forest checkpoint exists at:
   <checkpoints>/<model_id>/model.joblib
