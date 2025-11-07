@@ -10,7 +10,7 @@ Assumes the Random Forest checkpoint exists at:
   <checkpoints>/<model_id>/model.joblib
 
 Example:
-  python -m f2f_meeting.predict_windows_summary \
+  python -m f2f_meeting.predict_windows_as_mlflow \
     --windows_dir /home/jolivera/Documents/CloudSkin/Time-Series-Library/f2f_meeting/comparison_of_approaches/random_forest/job-0/predictions \
     --output_csv /home/jolivera/Documents/CloudSkin/Time-Series-Library/f2f_meeting/comparison_of_approaches/random_forest/job-0/predictions/results/all_predictions.csv \
     --checkpoints /home/jolivera/Documents/CloudSkin/Time-Series-Library/checkpoints \
