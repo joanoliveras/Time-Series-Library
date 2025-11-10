@@ -305,17 +305,15 @@ def main():
     ax1.set_title(f"Reactive Approach")
     ax1.set_ylabel('Realtime latency')
     ax1.grid(True, alpha=0.3)
-    legend_elements = [
+    legend_elements_ax1 = [
         Line2D([0], [0], color='C0', lw=2, label='Cloud'),
         Line2D([0], [0], color='C1', lw=2, label='Edge'),
         Line2D([0], [0], color='red', lw=1.5, linestyle='--', label='SLA'),
-        Line2D([0], [0], color='gold', lw=6, alpha=0.25, label='Avoided SLA breach'),
+        Line2D([0], [0], color='gold', lw=6, alpha=0.25, label='SLA breach'),
     ]
     if y_pred1_aligned is not None:
-        legend_elements.append(Line2D([0], [0], color='black', lw=2, linestyle=':', label='Predicted QoS Reactive'))
-    if y_pred2_aligned is not None:
-        legend_elements.append(Line2D([0], [0], color='black', lw=2, linestyle=':', label='Predicted QoS Proactive'))
-    ax1.legend(handles=legend_elements, loc='best')
+        legend_elements_ax1.append(Line2D([0], [0], color='black', lw=2, linestyle=':', label='Past 5-min QoS Mean'))
+    ax1.legend(handles=legend_elements_ax1, loc='best')
 
     # Approach 2 subplot
     _plot_by_cluster(ax2, x_time, y2, c2)
@@ -332,7 +330,15 @@ def main():
     ax2.set_xlabel('Timestamp')
     ax2.set_ylabel('Realtime latency')
     ax2.grid(True, alpha=0.3)
-    ax2.legend(handles=legend_elements, loc='best')
+    legend_elements_ax2 = [
+        Line2D([0], [0], color='C0', lw=2, label='Cloud'),
+        Line2D([0], [0], color='C1', lw=2, label='Edge'),
+        Line2D([0], [0], color='red', lw=1.5, linestyle='--', label='SLA'),
+        Line2D([0], [0], color='gold', lw=6, alpha=0.25, label='Avoided SLA breach'),
+    ]
+    if y_pred2_aligned is not None:
+        legend_elements_ax2.append(Line2D([0], [0], color='black', lw=2, linestyle=':', label='Predicted QoS Proactive'))
+    ax2.legend(handles=legend_elements_ax2, loc='best')
 
     fig.tight_layout()
 
@@ -391,8 +397,8 @@ def main():
             ax2.grid(True, alpha=0.3)
 
             # Set legend
-            ax1.legend(handles=legend_elements, loc='best')
-            ax2.legend(handles=legend_elements, loc='best')
+            ax1.legend(handles=legend_elements_ax1, loc='best')
+            ax2.legend(handles=legend_elements_ax2, loc='best')
 
             return [ax1, ax2]
 
