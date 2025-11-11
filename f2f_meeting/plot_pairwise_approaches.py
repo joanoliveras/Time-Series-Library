@@ -303,7 +303,7 @@ def main():
             ax1.plot(x_time[:_n], y_pred1_aligned[:_n], color='black', linestyle=':', linewidth=2)
 
     ax1.set_title(f"Reactive Approach")
-    ax1.set_ylabel('Realtime latency')
+    ax1.set_ylabel('Realtime latency (s)')
     ax1.grid(True, alpha=0.3)
     legend_elements_ax1 = [
         Line2D([0], [0], color='C0', lw=2, label='Cloud'),
@@ -328,7 +328,7 @@ def main():
 
     ax2.set_title(f"Proactive Approach")
     ax2.set_xlabel('Timestamp')
-    ax2.set_ylabel('Realtime latency')
+    ax2.set_ylabel('Realtime latency (s)')
     ax2.grid(True, alpha=0.3)
     legend_elements_ax2 = [
         Line2D([0], [0], color='C0', lw=2, label='Cloud'),
@@ -388,9 +388,9 @@ def main():
             ax2.axhline(y=args.sla, color='red', linestyle='--', linewidth=1.5, alpha=0.7)
 
             # Set static labels
-            ax1.set_ylabel('Realtime latency')
+            ax1.set_ylabel('Realtime latency (s)')
             ax2.set_xlabel('Timestamp')
-            ax2.set_ylabel('Realtime latency')
+            ax2.set_ylabel('Realtime latency (s)')
 
             # Set grid
             ax1.grid(True, alpha=0.3)
