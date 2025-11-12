@@ -36,6 +36,47 @@ class ExperimentWindow:
     end_epoch_seconds: float
     source_file: str
 
+def _find_validation_csv_for_window(raw_dir: str, window: ExperimentWindow) -> Optional[str]:
+    """Locate the validation CSV corresponding to this window's JSON descriptor.
+    Assumes the CSV has the exact same basename as the JSON, with a .csv extension.
+    """
+    base = os.path.splitext(window.source_file)[0]
+    direct_csv = os.path.join(raw_dir, base + '.csv')
+    return direct_csv if os.path.isfile(direct_csv) else None
+
+def _compute_power_from_validation(raw_dir: str, window: ExperimentWindow) -> Dict[str, float]:
+    """Compute power stats from the validation CSV:
+    - power: average over rows where cluster is edge and node_cpu_usage is non-null
+    - count_power_non_null: number of such rows
+    """
+    EDGE_CLUSTER_ID = 'eb0e3eaa-b668-4ad6-bc10-2bb0eb7da259'
+    csv_path = _find_validation_csv_for_window(raw_dir, window)
+    if csv_path is None or not os.path.isfile(csv_path):
+        return {
+            'power': float('nan'),
+            'count_power_non_null': 0,
+        }
+    try:
+        df_val = pd.read_csv(csv_path,sep=';')
+    except Exception:
+        return {
+            'power': float('nan'),
+            'count_power_non_null': 0,
+        }
+    if 'cluster' not in df_val.columns or 'node_cpu_usage' not in df_val.columns:
+        return {
+            'power': float('nan'),
+            'count_power_non_null': 0,
+        }
+    in_edge = (df_val['cluster'].astype(str) == EDGE_CLUSTER_ID)
+    cpu_usage = pd.to_numeric(df_val['node_cpu_usage'], errors='coerce')
+    edge_valid = in_edge & cpu_usage.notna()
+    power_values = ((182.0 - 119.0) / 70.0) * ((cpu_usage[edge_valid] / 16.0) * 100.0) + 119.0
+    avg_power = float(power_values.mean()) if not power_values.empty else float('nan')
+    return {
+        'power': avg_power,
+        'count_power_non_null': int(edge_valid.sum()),
+    }
 
 def _discover_approaches(root: str) -> List[str]:
     return [d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))]
@@ -100,7 +141,7 @@ def _slice_experiment(df_metrics: pd.DataFrame, window: ExperimentWindow) -> pd.
     return df_exp
 
 
-def _summarize_single_experiment(df_exp: pd.DataFrame, sla: float) -> Dict[str, float]:
+def _summarize_single_experiment(df_exp: pd.DataFrame, sla: float, raw_dir: str, window: ExperimentWindow) -> Dict[str, float]:
     """Compute metrics for a single experiment's time series of latency.
 
     Metrics:
@@ -112,6 +153,9 @@ def _summarize_single_experiment(df_exp: pd.DataFrame, sla: float) -> Dict[str, 
       - total_seconds_above_sla_cloud_cluster: sum of dt where latency >= SLA in cloud cluster
       - total_seconds_in_cloud_cluster: sum of dt spent in non-edge cluster
       - percent_time_below_sla: percentage of total dt where latency < SLA
+      - power: computed from validation CSV using edge rows with non-null CPU
+      - count_power_non_null: number of validation rows contributing to power
+      - hours: experiment duration in hours (max(date) - min(date))
     """
     if df_exp.empty:
         return {
@@ -123,6 +167,9 @@ def _summarize_single_experiment(df_exp: pd.DataFrame, sla: float) -> Dict[str, 
             'total_seconds_above_sla_cloud_cluster': 0.0,
             'total_seconds_in_cloud_cluster': 0.0,
             'percent_time_below_sla': float('nan'),
+            'power': float('nan'),
+            'count_power_non_null': 0,
+            'hours': 0.0,
         }
 
     latency = df_exp['pipelines_status_realtime_pipeline_latency'].astype(float)
@@ -137,6 +184,7 @@ def _summarize_single_experiment(df_exp: pd.DataFrame, sla: float) -> Dict[str, 
     dt_next = t.shift(-1) - t
     dt_next = dt_next.fillna(0.0)
     total_duration_seconds = float(dt_next.sum())
+    hours = float(total_duration_seconds / 3600.0) if total_duration_seconds > 0.0 else 0.0
     # Only count duration above SLA for the edge cluster rows
     EDGE_CLUSTER_ID = 'eb0e3eaa-b668-4ad6-bc10-2bb0eb7da259'
     CLOUD_CLUSTER_ID = 'fd7816db-7948-4602-af7a-1d51900792a7'
@@ -171,6 +219,11 @@ def _summarize_single_experiment(df_exp: pd.DataFrame, sla: float) -> Dict[str, 
     seconds_below_sla = float((below.astype(float) * dt_next).sum())
     percent_time_below_sla = float(100.0 * seconds_below_sla / total_duration_seconds) if total_duration_seconds > 0.0 else float('nan')
 
+    # Power and counts from validation CSV
+    val_power_stats = _compute_power_from_validation(raw_dir, window)
+    avg_power = val_power_stats['power']
+    count_power_non_null = val_power_stats['count_power_non_null']
+
     return {
         'num_steps': int(df_exp.shape[0]),
         'overall_mean_latency': overall_mean_latency,
@@ -183,6 +236,9 @@ def _summarize_single_experiment(df_exp: pd.DataFrame, sla: float) -> Dict[str, 
         'total_seconds_in_cloud_cluster': total_seconds_in_cloud_cluster,
         'total_seconds_in_edge_cluster': seconds_in_edge_cluster,
         'percent_time_below_sla': percent_time_below_sla,
+        'power': avg_power,
+        'count_power_non_null': count_power_non_null,
+        'hours': hours,
     }
 
 
@@ -204,7 +260,7 @@ def process_approach_per_experiment(
         if df_exp.empty:
             continue
 
-        summary = _summarize_single_experiment(df_exp, sla=sla)
+        summary = _summarize_single_experiment(df_exp, sla=sla, raw_dir=raw_dir, window=window)
         summary['experiment_id'] = window.source_file
         rows.append(summary)
 
@@ -212,7 +268,7 @@ def process_approach_per_experiment(
         raise RuntimeError(f"No experiments with data found for {approach_path}")
 
     df = pd.DataFrame(rows)
-    return df[['experiment_id', 'num_steps', 'overall_mean_latency', 'peak_latency', 'num_times_crossed_above_sla', 'total_seconds_above_sla_edge_cluster', 'total_seconds_above_sla_cloud_cluster', 'number_migrations_edge_to_cloud', 'number_migrations_cloud_to_edge', 'total_seconds_in_cloud_cluster', 'total_seconds_in_edge_cluster', 'percent_time_below_sla']]
+    return df[['experiment_id', 'num_steps', 'overall_mean_latency', 'peak_latency', 'num_times_crossed_above_sla', 'total_seconds_above_sla_edge_cluster', 'total_seconds_above_sla_cloud_cluster', 'number_migrations_edge_to_cloud', 'number_migrations_cloud_to_edge', 'total_seconds_in_cloud_cluster', 'total_seconds_in_edge_cluster', 'percent_time_below_sla', 'power', 'count_power_non_null', 'hours']]
 
 
 def main():
@@ -260,6 +316,9 @@ def main():
                 'avg_total_seconds_in_cloud_cluster': [float(df_exp['total_seconds_in_cloud_cluster'].mean())],
                 'avg_total_seconds_in_edge_cluster': [float(df_exp['total_seconds_in_edge_cluster'].mean())],
                 'avg_percent_time_below_sla': [float(df_exp['percent_time_below_sla'].mean())],
+                'avg_power': [float(df_exp['power'].mean())],
+                'avg_count_power_non_null': [float(df_exp['count_power_non_null'].mean())],
+                'avg_hours': [float(df_exp['hours'].mean())],
             })
             approach_summaries.append(df_summary)
             print(f"Processed {approach}: {df_exp.shape[0]} experiments")
