@@ -26,8 +26,8 @@ class Exp_ETS:
     FORECAST_STEPS = 20
     OUTPUT_LAST_STEPS = 10  # return steps 10..19
 
-    TRAIN_EDGE_PATH = "/TSLib/dataset/training_dataset/new_queues_concurrency_4_after_migration/preprocessed_data_ets_edge.csv"
-    TRAIN_CLOUD_PATH = "/TSLib/dataset/training_dataset/new_queues_concurrency_4_after_migration/preprocessed_data_ets_cloud.csv"
+    TRAIN_EDGE_PATH = "/app/prediction/TSLib/dataset/training_dataset/new_queues_concurrency_4_after_migration/preprocessed_data_ets_edge.csv"
+    TRAIN_CLOUD_PATH = "/app/prediction/TSLib/dataset/training_dataset/new_queues_concurrency_4_after_migration/preprocessed_data_ets_cloud.csv"
 
     def __init__(self, args):
         self.args = args
