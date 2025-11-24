@@ -9,6 +9,7 @@ import torch.backends
 from exp.exp_anomaly_detection import Exp_Anomaly_Detection
 from exp.exp_classification import Exp_Classification
 from exp.exp_imputation import Exp_Imputation
+from exp.exp_ets import Exp_ETS
 from exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
 from exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
 from exp.exp_linear_regression import Exp_Linear_Regression
@@ -29,7 +30,7 @@ if __name__ == "__main__":
         type=str,
         required=True,
         default="long_term_forecast",
-        help="task name, options:[long_term_forecast, short_term_forecast, imputation, classification, anomaly_detection, linear_regression]",
+        help="task name, options:[long_term_forecast, short_term_forecast, imputation, classification, anomaly_detection, linear_regression, ets]",
     )
     parser.add_argument(
         "--is_training", type=int, required=True, default=1, help="status"
@@ -465,6 +466,8 @@ if __name__ == "__main__":
         Exp = Exp_Linear_Regression
     elif args.task_name == "random_forest": 
         Exp = Exp_Random_Forest
+    elif args.task_name == "ets":
+        Exp = Exp_ETS
     else:
         Exp = Exp_Long_Term_Forecast
 

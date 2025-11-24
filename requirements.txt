@@ -13,3 +13,4 @@ sympy==1.11.1
 torch
 tqdm==4.64.1
 PyWavelets
+statsmodels==0.14.0
