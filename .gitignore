@@ -167,6 +167,7 @@ result_anomaly_detection.txt
 scripts/augmentation/
 run_anylearn.py
 environment.txt
+/old/
 
 # Claude Code project instructions
 CLAUDE.md

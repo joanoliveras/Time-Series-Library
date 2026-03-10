@@ -1,2 +1,0 @@
-pairs_count,overlap_seconds_total,reactive_above_edge_seconds,rf_cloud_seconds,avoided_seconds,not_avoided_seconds_rf_also_above,avoided_fraction_of_reactive_above_edge
-375,10712250.0,408150.0,6849810.0,266730.0,3570.0,0.6535097390665197
